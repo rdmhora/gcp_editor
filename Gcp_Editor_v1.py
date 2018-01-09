@@ -4,12 +4,19 @@ import numpy as np
 import utm  # library used to convert coordinate system
 import os
 os.system("pyuic5 -x gcp_editor_gui.ui -o gcp_editor_gui.py")
+os.system("pyuic5 -x saved.ui -o saved.py")
+os.system("pyuic5 -x ops.ui -o ops.py")
+
 from os.path import basename
 from PyQt5 import uic, QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QFileDialog, QTableWidgetItem, QTableView, QGraphicsItem, QGraphicsView
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
-from gcp_editor_gui import Ui_MainWindow
+from gcp_editor_gui import Ui_GCPEditor
+from saved import Ui_Saved
+from ops import Ui_Ops
+
+
 import sys
 
 gcp_file = []
@@ -269,18 +276,23 @@ class MyScene(QtWidgets.QGraphicsScene):
         global gcpTable
         global images
 
-        try:
-            for i in range(1,len(gcp_file)-1):
+        #try:
+        for i in range(1,len(gcp_file)-1):
                 if imageList.item(imageList.currentRow()).text() == gcp_file[i][5] and \
-                                    gcpTable.itemAt(gcpTable.currentRow(), 0).text() == gcp_file[i][0]:
-                    gcp_file[i][4] = [e.scenePos().x(), e.scenePos().y()]
+                                    gcpTable.item(gcpTable.currentRow(), 0).text() == gcp_file[i][0]:
+
+                    gcp_file[i][4][0][0] = e.scenePos().x()
+                    gcp_file[i][4][0][1] = e.scenePos().y()
+                    pen = QPen(Qt.blue)
+                    pen.setCosmetic(True)
+                    self.addLine(e.scenePos().x(), e.scenePos().y() - 20, e.scenePos().x(), e.scenePos().y() + 20, pen)
+                    self.addLine(e.scenePos().x()-20, e.scenePos().y(), e.scenePos().x() + 20, e.scenePos().y(), pen)
+        self.update()
+
+        #except:
+         #   print('nothing')
 
 
-        except:
-            print('nothing')
-
-    def gcp(self):
-        return gcp_file
 
 class MyView(QtWidgets.QGraphicsView):
 
@@ -312,11 +324,12 @@ class MyView(QtWidgets.QGraphicsView):
         except:
             print('nothing')
 
+
 class GCPEditor(QtWidgets.QMainWindow):
 
     def __init__(self):
         super(GCPEditor, self).__init__()
-        self.ui = Ui_MainWindow()
+        self.ui = Ui_GCPEditor()
         self.ui.setupUi(self)
         self.ui.gcpTable.setColumnCount(4)
         self.ui.gcpTable.setRowCount(1)
@@ -351,19 +364,31 @@ class GCPEditor(QtWidgets.QMainWindow):
         self.zoom = 1
 
     def addImages(self):
-
+        global images
         dlg = QFileDialog()
         dlg.setFileMode(QFileDialog.ExistingFiles)
         try:
             if dlg.exec_():
 
                 self.images = dlg.selectedFiles()
+            check = CheckExistence()
+            exif_test = check.exif_check(self.images)
+            # If aexist Exif list the gcp coordinates at table
 
-            self.ui.imageLabel.setText(str(len(self.images)) + ' Images Added')
-            global images
-            images = self.images
+            if exif_test is 1:
+                self.ui.imageLabel.setText(str(len(self.images)) + ' Images Added')
+                images = self.images
+            else:
+                self.images = 0
+
+                self.addImg = QtWidgets.QMainWindow()
+                self.addUi = Ui_Ops()
+                self.addUi.setupUi(self.addImg)
+                self.addImg.show()
         except:
-            print('nothing')
+
+            print('')
+
 
     def addGcp(self):
         global gcp_file
@@ -400,20 +425,27 @@ class GCPEditor(QtWidgets.QMainWindow):
             #######################################################################################################
 
     def imageListClicked(self, clickedIndex):
-        target = QImage('/Users/DaHora/PycharmProjects/GCP/Target.jpg')
+        global gcp_file
         index = clickedIndex.row()
         self.ui.imageScene.clear()
         for i in range(0, len(self.images) - 1):
-            if self.ui.imageList.item(index).text() == basename(self.images[i]):
-                img = Image.open(self.images[i])
-                (n, e) = img.size
+                if self.ui.imageList.item(index).text() == basename(self.images[i]):
+                    for j in range(1, len(gcp_file) - 1):
+                        if self.ui.gcpTable.item(self.ui.gcpTable.currentRow(), 0).text() == gcp_file[j][0] and \
+                                     self.ui.imageList.item(index).text() == gcp_file[j][5]:
+                            img = Image.open(self.images[i])
+                            (n, e) = img.size
 
-                pixMap = QPixmap(self.images[i])
-                self.ui.imageScene.addPixmap(pixMap)
-                self.ui.imageView.fitInView(QRectF(0, 0, n, e), Qt.KeepAspectRatio)
-                self.ui.imageScene.update()
-
-
+                            pixMap = QPixmap(self.images[i])
+                            self.ui.imageScene.addPixmap(pixMap)
+                            self.ui.imageView.fitInView(QRectF(0, 0, n, e), Qt.KeepAspectRatio)
+                            pen = QPen(Qt.green)
+                            pen.setCosmetic(True)
+                            self.ui.imageScene.addLine(gcp_file[j][4][0][0], gcp_file[j][4][0][1] - 20,
+                                                              gcp_file[j][4][0][0], gcp_file[j][4][0][1] + 20, pen)
+                            self.ui.imageScene.addLine(gcp_file[j][4][0][0] - 20, gcp_file[j][4][0][1],
+                                                              gcp_file[j][4][0][0] + 20, gcp_file[j][4][0][1], pen)
+                            self.ui.imageScene.update()
 
     def gcpListClicked(self, clickedIndex):
         global gcp_file
@@ -473,7 +505,8 @@ class GCPEditor(QtWidgets.QMainWindow):
                             gcp_file.append([gcpname[i], E, N, Z, coord, basename(self.images[j])])
 
             else:
-                print('Dialog asking file with images coordinates')
+                print('')
+
 
         except:
             print('Create a dialog asking for images or cgp file')
@@ -481,15 +514,20 @@ class GCPEditor(QtWidgets.QMainWindow):
     def save(self):
         global gcp_file
         gcp_file.remove(gcp_file[0])
-        try:
 
+        try:
             thefile = open('gcp_list.txt', 'w')
             for item in gcp_file:
                 thefile.write("%s\t" % str(item[1]) + "%s\t" % str(item[2]) + "%s\t" % str(item[3]) +
-                              "%s\t" % str(int(item[4][0][0])) + "%s\t" % str(int(item[4][0][1])) + "%s\n" % str(item[5]))
+                                  "%s\t" % str(int(item[4][0][0])) + "%s\t" % str(int(item[4][0][1])) + "%s\n" % str(item[5]))
             thefile.close()
+            self.save = QtWidgets.QMainWindow()
+            self.saveUi = Ui_Saved()
+            self.saveUi.setupUi(self.save)
+            self.save.show()
+
         except:
-            print('create a dialog for except')
+            print('')
 
 
 if __name__ == '__main__':
