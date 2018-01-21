@@ -276,21 +276,27 @@ class MyScene(QtWidgets.QGraphicsScene):
         global gcpTable
         global images
 
-        #try:
-        for i in range(1,len(gcp_file)-1):
-                if imageList.item(imageList.currentRow()).text() == gcp_file[i][5] and \
-                                    gcpTable.item(gcpTable.currentRow(), 0).text() == gcp_file[i][0]:
+        try:
 
-                    gcp_file[i][4][0][0] = e.scenePos().x()
-                    gcp_file[i][4][0][1] = e.scenePos().y()
-                    pen = QPen(Qt.blue)
-                    pen.setCosmetic(True)
-                    self.addLine(e.scenePos().x(), e.scenePos().y() - 20, e.scenePos().x(), e.scenePos().y() + 20, pen)
-                    self.addLine(e.scenePos().x()-20, e.scenePos().y(), e.scenePos().x() + 20, e.scenePos().y(), pen)
-        self.update()
 
-        #except:
-         #   print('nothing')
+            for i in range(1,len(gcp_file)-1):
+                        if imageList.item(imageList.currentRow()).text() == gcp_file[i][5] and \
+                                            gcpTable.item(gcpTable.currentRow(), 0).text() == gcp_file[i][0]:
+                            deviceTransform = QTransform()
+                            self.removeItem(
+                                self.itemAt(float(gcp_file[i][4][0][0]), float(gcp_file[i][4][0][1]), deviceTransform))
+                            self.removeItem(
+                                self.itemAt(float(gcp_file[i][4][0][0]), float(gcp_file[i][4][0][1]), deviceTransform))
+                            gcp_file[i][4][0][0] = e.scenePos().x()
+                            gcp_file[i][4][0][1] = e.scenePos().y()
+                            pen = QPen(Qt.blue)
+                            pen.setCosmetic(True)
+                            self.addLine(e.scenePos().x(), e.scenePos().y() - 20, e.scenePos().x(), e.scenePos().y() + 20, pen)
+                            self.addLine(e.scenePos().x()-20, e.scenePos().y(), e.scenePos().x() + 20, e.scenePos().y(), pen)
+            self.update()
+
+        except:
+            print('nothing')
 
 
 
